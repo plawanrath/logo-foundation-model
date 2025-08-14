@@ -46,6 +46,13 @@ def main(args):
     # --- Model & Optimizer ---
     model = MaskedAutoencoderViT(model_name='vit_small_patch16_224').to(device)
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.95), weight_decay=0.05)
+    
+    # --- Resume from checkpoint if provided ---
+    if args.resume_checkpoint:
+        print(f"Loading checkpoint from {args.resume_checkpoint}")
+        checkpoint = torch.load(args.resume_checkpoint, map_location=device)
+        model.encoder.load_state_dict(checkpoint)
+        print("Checkpoint loaded successfully")
 
     # --- Training Loop ---
     train_losses = []
@@ -102,6 +109,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training')
     parser.add_argument('--lr', type=float, default=1.5e-4, help='Learning rate')
     parser.add_argument('--save_interval', type=int, default=10, help='Epoch interval to save checkpoints and visualizations')
+    parser.add_argument('--resume_checkpoint', type=str, help='Path to encoder checkpoint to resume from')
 
     args = parser.parse_args()
     main(args)

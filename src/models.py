@@ -3,6 +3,8 @@
 import torch
 import torch.nn as nn
 import timm
+from transformers import DetrConfig, DetrForObjectDetection
+
 
 class MaskedAutoencoderViT(nn.Module):
     """
@@ -150,3 +152,49 @@ class MaskedAutoencoderViT(nn.Module):
         pred = self.forward_decoder(latent, ids_restore)
         loss = self.forward_loss(imgs, pred, mask)
         return loss, pred, mask
+
+
+def create_detr_model_with_custom_backbone(num_classes, pretrained_encoder_path):
+    """
+    Creates a DETR model with a ViT-Small backbone and loads pre-trained encoder weights.
+    
+    Args:
+        num_classes (int): The number of object classes for the detection head.
+        pretrained_encoder_path (str): Path to the saved.pth file for the MAE encoder.
+        
+    Returns:
+        A DetrForObjectDetection model with the custom, pre-trained backbone.
+    """
+    # 1. Define the configuration
+    config = DetrConfig(
+        num_labels=num_classes,
+        use_timm_backbone=True,
+        backbone="vit_small_patch16_224",
+        backbone_config=None, # Not needed when use_timm_backbone is True
+        num_queries=100, # Standard number of object queries for DETR
+        encoder_layers=6,
+        decoder_layers=6,
+        encoder_attention_heads=8,
+        decoder_attention_heads=8,
+    )
+
+    # 2. Instantiate the model with the custom config
+    # ignore_mismatched_sizes=True is crucial as we are replacing the classification head
+    model = DetrForObjectDetection.from_pretrained(
+        None, 
+        config=config, 
+        ignore_mismatched_sizes=True
+    )
+
+    # 3. Load the pre-trained encoder weights
+    if pretrained_encoder_path:
+        print(f"Loading pre-trained encoder weights from: {pretrained_encoder_path}")
+        encoder_state_dict = torch.load(pretrained_encoder_path, map_location='cpu')
+        
+        # The backbone is nested within model.model.backbone
+        model.model.backbone.load_state_dict(encoder_state_dict)
+        print("Successfully loaded pre-trained backbone weights.")
+    else:
+        print("Warning: No pre-trained encoder path provided. Initializing backbone with random weights.")
+
+    return model

@@ -26,12 +26,12 @@ def unpatchify(x, patch_size=16):
     imgs: (N, 3, H, W)
     """
     p = patch_size
-    h = w = int(x.shape**0.5)
-    assert h * w == x.shape
+    h = w = int(x.shape[1]**0.5)
+    assert h * w == x.shape[1]
     
-    x = x.reshape(shape=(x.shape, h, w, p, p, 3))
+    x = x.reshape(shape=(x.shape[0], h, w, p, p, 3))
     x = torch.einsum('nhwpqc->nchpwq', x)
-    imgs = x.reshape(shape=(x.shape, 3, h * p, w * p))
+    imgs = x.reshape(shape=(x.shape[0], 3, h * p, w * p))
     return imgs
 
 def denormalize(tensor, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
@@ -77,10 +77,15 @@ def visualize_mae_reconstruction(imgs, pred, mask, save_path, num_images=8):
         axes[2, i].imshow(to_pil_image(pred[i]))
         axes[2, i].axis('off')
 
-    axes.set_title('Original', loc='left', fontsize=10)
-    axes.set_title('Masked', loc='left', fontsize=10)
-    axes.set_title('Reconstructed', loc='left', fontsize=10)
+    axes[0, 0].set_title('Original', fontsize=12)
+    axes[1, 0].set_title('Masked', fontsize=12)
+    axes[2, 0].set_title('Reconstructed', fontsize=12)
     
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
+
+def get_coco_api_from_dataset(dataset):
+    # This is a bit of a workaround to get the COCO API object
+    # from the custom dataset, which is needed to get catIds.
+    return dataset.coco
