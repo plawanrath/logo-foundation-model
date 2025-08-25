@@ -4,6 +4,8 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 from torchvision.transforms.functional import to_pil_image
+import cv2
+import random
 
 def plot_loss_curve(losses, save_path):
     """
@@ -89,3 +91,34 @@ def get_coco_api_from_dataset(dataset):
     # This is a bit of a workaround to get the COCO API object
     # from the custom dataset, which is needed to get catIds.
     return dataset.coco
+
+def visualize_predictions(image_path, predictions, id_to_label, save_path):
+    """
+    Draws predicted bounding boxes on an image.
+    """
+    img = cv2.imread(str(image_path))
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
+    # Generate a color for each class
+    colors = {}
+    for label_id in id_to_label.keys():
+        colors[label_id] = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+
+    for score, label_id, box in zip(predictions['scores'], predictions['labels'], predictions['boxes']):
+        box = [int(i) for i in box.tolist()]
+        label = id_to_label.get(label_id.item(), 'Unknown')
+        color = colors.get(label_id.item(), (255, 255, 255))
+        
+        # Draw bounding box
+        cv2.rectangle(img, (box, box), (box, box), color, 2)
+        
+        # Draw label
+        text = f"{label}: {score:.2f}"
+        cv2.putText(img, text, (box, box - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+    plt.figure(figsize=(12, 12))
+    plt.imshow(img)
+    plt.axis('off')
+    plt.savefig(save_path, bbox_inches='tight')
+    plt.close()
+    print(f"Inference visualization saved to {save_path}")
